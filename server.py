@@ -2480,6 +2480,10 @@ class ManaFoodHandler(BaseHTTPRequestHandler):
             self.send_json(api_promocoes_ativas()); return
         if path == '/api/cashback/config':
             self.send_json(api_get_cashback_config()); return
+        if path == '/api/check-update':
+            self.send_json(api_check_update()); return
+        if path == '/api/aplicar-update':
+            self.send_json(api_aplicar_update()); return
         if path.startswith('/api/fidelidade/'):
             try:
                 cid=int(path.split('/')[-1])
@@ -2592,6 +2596,31 @@ class ManaFoodHandler(BaseHTTPRequestHandler):
 
 
 PORT=5000
+LOCAL_VERSION = (Path(__file__).parent / 'version.txt').read_text(encoding='utf-8').strip() if (Path(__file__).parent / 'version.txt').exists() else '0.0.0'
+
+def api_check_update():
+    import urllib.request
+    try:
+        url = 'https://raw.githubusercontent.com/Biomarinha00/manafood/main/version.txt'
+        req = urllib.request.urlopen(url, timeout=5)
+        remote = req.read().decode('utf-8').strip()
+        tem_update = remote != LOCAL_VERSION
+        return {"ok":True,"versao_local":LOCAL_VERSION,"versao_remota":remote,"tem_update":tem_update}
+    except:
+        return {"ok":True,"versao_local":LOCAL_VERSION,"versao_remota":"","tem_update":False}
+
+def api_aplicar_update():
+    import subprocess
+    try:
+        result = subprocess.run(['git','pull'], cwd=str(Path(__file__).parent),
+                                capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            new_ver = (Path(__file__).parent / 'version.txt').read_text(encoding='utf-8').strip() if (Path(__file__).parent / 'version.txt').exists() else LOCAL_VERSION
+            return {"ok":True,"msg":"Atualizado! Reinicie o servidor.","versao":new_ver,"output":result.stdout}
+        else:
+            return {"ok":False,"erro":result.stderr or "Erro no git pull"}
+    except Exception as e:
+        return {"ok":False,"erro":str(e)}
 
 def abrir_navegador():
     time.sleep(1.2); webbrowser.open(f'http://localhost:{PORT}')

@@ -1015,6 +1015,13 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
   </div>
 </div>
 
+<!-- BANNER DE ATUALIZAÇÃO -->
+<div id="update-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;padding:10px 16px;text-align:center;font-size:13px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,.3)">
+  <span id="update-msg">🚀 Nova versão disponível!</span>
+  <button onclick="aplicarUpdate()" style="margin-left:12px;padding:4px 14px;border-radius:6px;border:none;background:#fff;color:#2563eb;font-size:12px;font-weight:700;cursor:pointer">Atualizar agora</button>
+  <button onclick="document.getElementById('update-banner').style.display='none'" style="margin-left:6px;background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:16px">✕</button>
+</div>
+
 <!-- MOBILE OVERLAY -->
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeMobMenu()"></div>
 
@@ -5195,6 +5202,29 @@ function copiarListaReposicao(){
     navigator.clipboard.writeText(txt).then(()=>toast('📋 Lista copiada! Cole no WhatsApp')).catch(()=>_copiarFallback(txt));
   }else _copiarFallback(txt);
 }
+async function checkForUpdate(){
+  try{
+    var d=await api('/check-update');
+    if(d&&d.tem_update){
+      var banner=document.getElementById('update-banner');
+      var msg=document.getElementById('update-msg');
+      if(banner){banner.style.display='block';msg.textContent='🚀 Nova versão '+d.versao_remota+' disponível! (atual: '+d.versao_local+')';}
+    }
+  }catch(e){}
+}
+async function aplicarUpdate(){
+  var banner=document.getElementById('update-banner');
+  var msg=document.getElementById('update-msg');
+  msg.textContent='⏳ Atualizando...';
+  var res=await api('/aplicar-update');
+  if(res&&res.ok){
+    msg.textContent='✅ Atualizado para v'+res.versao+'! Reinicie o servidor.';
+    setTimeout(function(){location.reload()},3000);
+  }else{
+    msg.textContent='❌ Erro: '+(res&&res.erro||'Falha na atualização');
+  }
+}
+
 function onLogoSelect(e){
   var file=e.target.files[0];if(!file)return;
   if(file.size>512*1024){toast('Logo muito grande! Máx 500KB','err');return}
@@ -7399,6 +7429,7 @@ async function fazerLogin(){
     _iniciarAutoRefresh();
     _restoreSidebarState();
     loadProdutos(); loadClientesSelect(); loadCategorias(); loadConfig(); loadCaixa();
+    checkForUpdate();
   } else {
     err.textContent = d.erro||'Erro ao fazer login';
     document.getElementById('li-senha').value='';
@@ -7881,6 +7912,7 @@ document.addEventListener('DOMContentLoaded', async()=>{
       _iniciarAutoRefresh();
       updateSyncBadge();
       loadProdutos(); loadClientesSelect(); loadCategorias(); loadConfig(); loadCaixa();
+      checkForUpdate();
       if(_pendingSyncCount>0) syncQueue();
       return;
     }catch(e){ localStorage.removeItem('usuarioLogado'); }

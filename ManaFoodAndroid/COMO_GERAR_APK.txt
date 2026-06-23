@@ -1,0 +1,45 @@
+====================================================
+  MANÁ FOOD — Como gerar o APK para Android
+====================================================
+
+PASSO 1 — Instalar o Android Studio
+  Baixe em: https://developer.android.com/studio
+  Instale normalmente (Next > Next > Finish).
+  Na primeira abertura, ele baixa o SDK automaticamente.
+
+PASSO 2 — Abrir o projeto
+  No Android Studio: File > Open
+  Selecione a pasta:  ManaFoodAndroid\
+  Aguarde o Gradle sincronizar (barra de progresso no canto inferior).
+
+PASSO 3 — Gerar o APK
+  Menu: Build > Build Bundle(s) / APK(s) > Build APK(s)
+  Aguarde compilar.
+  Aparece uma notificação: "APK(s) generated successfully"
+  Clique em "locate" para ver o arquivo.
+
+  O APK estará em:
+  ManaFoodAndroid\app\build\outputs\apk\debug\app-debug.apk
+
+PASSO 4 — Instalar no celular Android
+  - Copie o arquivo app-debug.apk para o celular
+    (WhatsApp, cabo USB, Google Drive, etc.)
+  - No celular: abra o arquivo .apk
+  - Se perguntar "Instalar de fontes desconhecidas", permita e instale.
+
+PASSO 5 — Configurar o IP
+  - Na primeira abertura do app, ele pede o IP do servidor.
+  - Para descobrir o IP do PC:
+    * Abra o CMD e digite: ipconfig
+    * Procure "Endereço IPv4" (ex: 192.168.1.100)
+  - Digite apenas o número (sem http:// ou porta):  192.168.1.100
+  - O app conecta automaticamente na porta 5000.
+
+IMPORTANTE:
+  - O celular e o PC devem estar na MESMA rede WiFi.
+  - O servidor (server.py) deve estar rodando no PC.
+  - Para mudar o IP depois: no app, toque nos 3 pontinhos > "Mudar IP do servidor"
+
+====================================================
+  Em caso de dúvida, chame o suporte! :)
+====================================================
