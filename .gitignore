@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+lanchonete/data/
+lanchonete/imagens/
+lanchonete/backups/
+cloudflared-windows-amd64.exe
+*.db
+.claude/
