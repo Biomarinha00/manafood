@@ -2168,6 +2168,11 @@ DEFAULTS_CONFIG = {
     'impressao_dav':  '1',
     'impressao_coz':  '1',
     'tema':           'default',
+    'print_metodo':       'windows',
+    'print_balcao_ip':    '',
+    'print_cozinha_ip':   '',
+    'print_balcao_nome':  '',
+    'print_cozinha_nome': '',
 }
 
 # ─── USUÁRIOS & LOG ──────────────────────────────────────────────────────────
@@ -2833,6 +2838,7 @@ class ManaFoodHandler(BaseHTTPRequestHandler):
             '/api/xml/vincular':          api_vincular_item_xml,
             '/api/xml/confirmar':         api_confirmar_entrada_xml,
             '/api/cardapio/publicar':     api_publicar_cardapio,
+            '/api/imprimir':              api_imprimir,
         }
         fn=routes.get(path)
         if fn: self.send_json(fn(data))
@@ -2885,6 +2891,75 @@ def api_aplicar_update():
         return {"ok":True,"msg":f"Atualizado! {atualizado} arquivos baixados. Reinicie o servidor.","versao":new_ver}
     except Exception as e:
         return {"ok":False,"erro":str(e)}
+
+# ─────────────────────────────────────────────
+# IMPRESSÃO DIRETA
+# ─────────────────────────────────────────────
+def _imprimir_escpos(ip_porta, texto):
+    """Envia texto pra impressora térmica ESC/POS via socket."""
+    try:
+        parts = ip_porta.split(':')
+        ip = parts[0].strip()
+        porta = int(parts[1]) if len(parts) > 1 else 9100
+        import socket as sock_mod
+        s = sock_mod.socket(sock_mod.AF_INET, sock_mod.SOCK_STREAM)
+        s.settimeout(5)
+        s.connect((ip, porta))
+        s.send(b'\x1b\x40')  # ESC @ init
+        s.send(b'\x1b\x61\x01')  # Center align
+        for line in texto.split('\n'):
+            s.send(line.encode('cp850', errors='replace') + b'\n')
+        s.send(b'\n\n\n')  # Feed
+        s.send(b'\x1d\x56\x00')  # GS V 0 — full cut
+        s.close()
+        return True
+    except Exception as e:
+        print(f"[ESCPOS] Erro: {e}")
+        return False
+
+def _imprimir_windows_direto(nome_impressora, texto):
+    """Imprime texto numa impressora Windows pelo nome via PowerShell."""
+    try:
+        import subprocess as subp_mod
+        import tempfile as tmp_mod
+        tmp = tmp_mod.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8')
+        tmp.write(texto)
+        tmp.close()
+        subp_mod.run(['powershell', '-NoProfile', '-Command',
+            f"Get-Content -Path '{tmp.name}' -Encoding UTF8 | Out-Printer -Name '{nome_impressora}'"],
+            capture_output=True, timeout=10)
+        os.unlink(tmp.name)
+        return True
+    except Exception as e:
+        print(f"[PRINT] Erro: {e}")
+        return False
+
+def api_imprimir(data):
+    """Endpoint de impressão direta (ESC/POS ou Windows)."""
+    tipo = data.get('tipo', 'dav')  # 'dav' ou 'cozinha'
+    texto = data.get('texto', '')
+    if not texto:
+        return {"ok": False, "erro": "Texto vazio"}
+
+    cfg = api_get_config()
+    metodo = cfg.get('print_metodo', 'windows')
+
+    if metodo == 'escpos':
+        ip = cfg.get('print_cozinha_ip', '') if tipo == 'cozinha' else cfg.get('print_balcao_ip', '')
+        if not ip:
+            return {"ok": False, "erro": f"IP da impressora {tipo} não configurado"}
+        ok = _imprimir_escpos(ip, texto)
+        return {"ok": ok, "erro": "" if ok else "Falha na conexão com a impressora"}
+
+    elif metodo == 'direto':
+        nome = cfg.get('print_cozinha_nome', '') if tipo == 'cozinha' else cfg.get('print_balcao_nome', '')
+        if not nome:
+            return {"ok": False, "erro": f"Nome da impressora {tipo} não configurado"}
+        ok = _imprimir_windows_direto(nome, texto)
+        return {"ok": ok, "erro": "" if ok else "Falha ao imprimir"}
+
+    else:
+        return {"ok": False, "erro": "Método 'windows' usa impressão pelo navegador"}
 
 def api_publicar_cardapio(data=None):
     """Gera HTML estático do cardápio e publica no GitHub Pages."""

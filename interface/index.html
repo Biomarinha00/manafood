@@ -2633,6 +2633,22 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
                 👨‍🍳 Comanda cozinha
               </label>
             </div>
+            <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+              <label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:8px">Método de impressão</label>
+              <select id="cfg-print-metodo" onchange="_togglePrintConfig()" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px">
+                <option value="windows">🖥️ Windows (popup)</option>
+                <option value="escpos">🖨️ ESC/POS via IP (térmica)</option>
+                <option value="direto">📄 Impressora Windows (nome)</option>
+              </select>
+            </div>
+            <div id="print-config-escpos" style="display:none;margin-top:10px">
+              <div class="form-group"><label>IP Impressora Balcão</label><input id="cfg-print-balcao-ip" placeholder="192.168.0.100:9100"></div>
+              <div class="form-group"><label>IP Impressora Cozinha</label><input id="cfg-print-cozinha-ip" placeholder="192.168.0.101:9100"></div>
+            </div>
+            <div id="print-config-direto" style="display:none;margin-top:10px">
+              <div class="form-group"><label>Nome Impressora Balcão</label><input id="cfg-print-balcao-nome" placeholder="Ex: EPSON TM-T20"></div>
+              <div class="form-group"><label>Nome Impressora Cozinha</label><input id="cfg-print-cozinha-nome" placeholder="Ex: EPSON TM-T20 Kitchen"></div>
+            </div>
           </div>
         </div>
 
@@ -4917,28 +4933,38 @@ function _htmlCozinha(v){
   </body></html>`;
 }
 
-function _imprimir(html){
-  const frame = document.getElementById('print-frame');
-  // Remove onload anterior para evitar loop ao limpar srcdoc
-  frame.onload = null;
-  frame.style.display = 'block';
-  frame.onload = () => {
-    frame.onload = null; // desvincula imediatamente — não dispara de novo ao limpar
-    frame.contentWindow.focus();
-    frame.contentWindow.print();
-    setTimeout(()=>{ frame.style.display='none'; frame.srcdoc=''; }, 1500);
-  };
-  frame.srcdoc = html;
+function _imprimir(html, tipo){
+  var metodo=configAtual.print_metodo||'windows';
+  if(metodo==='windows'){
+    // Existing flow: iframe + window.print
+    var f=document.getElementById('print-frame');
+    f.onload=null;
+    f.style.display='block';
+    f.onload=function(){
+      f.onload=null;
+      f.contentWindow.focus();
+      f.contentWindow.print();
+      setTimeout(function(){f.style.display='none';f.srcdoc='';},1500);
+    };
+    f.srcdoc=html;
+  } else {
+    // ESC/POS or Direto: send text to server
+    var texto = tipo==='cozinha' ? _textoCozinha() : _textoDAV();
+    api('/imprimir','POST',{tipo:tipo||'dav',texto:texto}).then(function(res){
+      if(res&&res.ok) toast('Impresso!');
+      else if(res&&res.erro) toast(res.erro,'err');
+    });
+  }
 }
 
 function imprimirDAV(){
   if(!_ultimaVenda) return;
-  _imprimir(_htmlDAV(_ultimaVenda));
+  _imprimir(_htmlDAV(_ultimaVenda),'dav');
 }
 
 function imprimirCozinha(){
   if(!_ultimaVenda) return;
-  _imprimir(_htmlCozinha(_ultimaVenda));
+  _imprimir(_htmlCozinha(_ultimaVenda),'cozinha');
 }
 
 function imprimirAmbos(){
@@ -5759,6 +5785,68 @@ async function publicarCardapio(){
     status.innerHTML='<span style="color:#dc2626">❌ '+(res&&res.erro||'Erro')+'</span>';
     toast((res&&res.erro)||'Erro ao publicar','err');
   }
+}
+
+function _togglePrintConfig(){
+  var m=document.getElementById('cfg-print-metodo').value;
+  document.getElementById('print-config-escpos').style.display=m==='escpos'?'block':'none';
+  document.getElementById('print-config-direto').style.display=m==='direto'?'block':'none';
+}
+
+function _textoDAV(){
+  var v=_ultimaVenda;if(!v)return'';
+  var c=configAtual;
+  var txt='';
+  txt+='================================\n';
+  txt+='       '+(c.nome_empresa||'Mana Food')+'\n';
+  txt+='================================\n';
+  txt+='Data: '+_localDate().split('-').reverse().join('/')+' '+new Date().toLocaleTimeString('pt-BR')+'\n';
+  txt+='Venda #'+v.venda_id+'\n';
+  txt+='--------------------------------\n';
+  txt+='PRODUTO          QTD  UNIT  TOTAL\n';
+  txt+='--------------------------------\n';
+  if(v.itens){v.itens.forEach(function(i){
+    var nome=(i.nome||'').substring(0,16).padEnd(16);
+    var qtd=String(i.quantidade||i.qtd||1).padStart(3);
+    var unit=String(parseFloat(i.preco_unitario||i.preco||0).toFixed(2)).padStart(6);
+    var sub=String((parseFloat(i.preco_unitario||i.preco||0)*(i.quantidade||i.qtd||1)).toFixed(2)).padStart(7);
+    txt+=nome+qtd+unit+sub+'\n';
+  })}
+  txt+='--------------------------------\n';
+  txt+='TOTAL: R$ '+(parseFloat(v.total||0)).toFixed(2)+'\n';
+  txt+='Pagamento: '+(v.tipo_pagamento||'dinheiro')+'\n';
+  if(v.tipo_atendimento&&v.tipo_atendimento!=='balcao')txt+='Atendimento: '+v.tipo_atendimento+'\n';
+  txt+='--------------------------------\n';
+  txt+='    Obrigado pela preferencia!\n';
+  txt+='================================\n';
+  return txt;
+}
+
+function _textoCozinha(){
+  var v=_ultimaVenda;if(!v)return'';
+  var c=configAtual;
+  var txt='';
+  txt+='================================\n';
+  txt+='        *** COZINHA ***\n';
+  txt+='   '+(c.nome_empresa||'Mana Food')+'\n';
+  txt+='================================\n';
+  txt+=new Date().toLocaleTimeString('pt-BR')+'\n';
+  txt+='PEDIDO #'+v.venda_id+'\n';
+  txt+='================================\n\n';
+  if(v.itens){v.itens.forEach(function(i){
+    txt+='  '+(i.quantidade||i.qtd||1)+'x '+(i.nome||'')+'\n';
+    if(i.observacao)txt+='     OBS: '+i.observacao+'\n';
+  })}
+  txt+='\n';
+  if(v.tipo_atendimento==='mesa')txt+='MESA: '+(v.mesa||'')+'\n';
+  if(v.tipo_atendimento==='entrega'){
+    txt+='ENTREGA: '+(v.entrega_nome||'')+'\n';
+    txt+='END: '+(v.entrega_endereco||'')+'\n';
+    if(v.entrega_bairro)txt+='BAIRRO: '+v.entrega_bairro+'\n';
+    if(v.entrega_telefone)txt+='TEL: '+v.entrega_telefone+'\n';
+  }
+  txt+='================================\n';
+  return txt;
 }
 
 function onLogoSelect(e){
@@ -6764,7 +6852,7 @@ async function reimprimirDAV(vendaId){
     observacao:        v.observacao||'',
   };
   const vObj = { venda_id: vendaId, payload, total: v.total };
-  _imprimir(_htmlDAV(vObj));
+  _imprimir(_htmlDAV(vObj),'dav');
 }
 
 async function reimprimirCozinha(vendaId){
@@ -6788,7 +6876,7 @@ async function reimprimirCozinha(vendaId){
     entrega_bairro:    v.entrega_bairro||'',
     entrega_obs:       v.entrega_obs||'',
   };
-  _imprimir(_htmlCozinha({ venda_id: vendaId, payload }));
+  _imprimir(_htmlCozinha({ venda_id: vendaId, payload }),'cozinha');
 }
 
 // ── AUTO-REFRESH EM TEMPO REAL ────────────────────────────────
@@ -8194,6 +8282,11 @@ async function loadConfig(){
   document.getElementById('cfg-impressao-modo').value = data.impressao_modo||'perguntar';
   document.getElementById('cfg-impressao-dav').checked = (data.impressao_dav||'1') === '1';
   document.getElementById('cfg-impressao-coz').checked = (data.impressao_coz||'1') === '1';
+  var _pm=document.getElementById('cfg-print-metodo');if(_pm){_pm.value=data.print_metodo||'windows';_togglePrintConfig()}
+  var _pbi=document.getElementById('cfg-print-balcao-ip');if(_pbi)_pbi.value=data.print_balcao_ip||'';
+  var _pci=document.getElementById('cfg-print-cozinha-ip');if(_pci)_pci.value=data.print_cozinha_ip||'';
+  var _pbn=document.getElementById('cfg-print-balcao-nome');if(_pbn)_pbn.value=data.print_balcao_nome||'';
+  var _pcn=document.getElementById('cfg-print-cozinha-nome');if(_pcn)_pcn.value=data.print_cozinha_nome||'';
   // Carrega tema salvo
   const temaAtual = data.tema || localStorage.getItem('mana_tema') || 'default';
   _aplicarTemaVisual(temaAtual);
@@ -8310,6 +8403,11 @@ async function salvarConfig(){
     impressao_modo: document.getElementById('cfg-impressao-modo').value,
     impressao_dav:  document.getElementById('cfg-impressao-dav').checked ? '1' : '0',
     impressao_coz:  document.getElementById('cfg-impressao-coz').checked ? '1' : '0',
+    print_metodo:       (document.getElementById('cfg-print-metodo')||{}).value||'windows',
+    print_balcao_ip:    (document.getElementById('cfg-print-balcao-ip')||{}).value||'',
+    print_cozinha_ip:   (document.getElementById('cfg-print-cozinha-ip')||{}).value||'',
+    print_balcao_nome:  (document.getElementById('cfg-print-balcao-nome')||{}).value||'',
+    print_cozinha_nome: (document.getElementById('cfg-print-cozinha-nome')||{}).value||'',
     tema:           localStorage.getItem('mana_tema')||'default',
   };
   const res = await api('/config','POST', payload);
