@@ -2832,6 +2832,7 @@ class ManaFoodHandler(BaseHTTPRequestHandler):
             '/api/xml/importar':          api_importar_xml,
             '/api/xml/vincular':          api_vincular_item_xml,
             '/api/xml/confirmar':         api_confirmar_entrada_xml,
+            '/api/cardapio/publicar':     api_publicar_cardapio,
         }
         fn=routes.get(path)
         if fn: self.send_json(fn(data))
@@ -2882,6 +2883,53 @@ def api_aplicar_update():
             except: pass
         new_ver = (base_dir / 'version.txt').read_text(encoding='utf-8').strip() if (base_dir / 'version.txt').exists() else LOCAL_VERSION
         return {"ok":True,"msg":f"Atualizado! {atualizado} arquivos baixados. Reinicie o servidor.","versao":new_ver}
+    except Exception as e:
+        return {"ok":False,"erro":str(e)}
+
+def api_publicar_cardapio(data=None):
+    """Gera HTML estático do cardápio e publica no GitHub Pages."""
+    import urllib.request
+    try:
+        html = _gerar_pagina_cardapio()
+        # Busca token do config ou do arquivo
+        token = ''
+        conn = get_connection(); c = conn.cursor()
+        c.execute("SELECT valor FROM config WHERE chave='github_token'")
+        row = c.fetchone()
+        if row: token = row['valor']
+        conn.close()
+        if not token:
+            token_file = Path(__file__).parent / 'github_token.txt'
+            if token_file.exists(): token = token_file.read_text(encoding='utf-8').strip()
+        if not token:
+            return {"ok":False,"erro":"Token do GitHub não configurado. Vá em Configurações e preencha o token."}
+        # Codifica HTML em base64
+        import base64 as b64mod
+        content_b64 = b64mod.b64encode(html.encode('utf-8')).decode('utf-8')
+        # Busca SHA atual do arquivo (necessário pra atualizar)
+        repo = 'Biomarinha00/manafood'
+        file_path = 'docs/index.html'
+        api_url = f'https://api.github.com/repos/{repo}/contents/{file_path}'
+        sha = ''
+        try:
+            req = urllib.request.Request(api_url, headers={'Authorization':f'token {token}','User-Agent':'ManaFood'})
+            resp = urllib.request.urlopen(req, timeout=10)
+            import json as jmod
+            info = jmod.loads(resp.read().decode('utf-8'))
+            sha = info.get('sha','')
+        except: pass
+        # Envia arquivo
+        payload = {"message":"Cardápio atualizado","content":content_b64,"branch":"main"}
+        if sha: payload["sha"] = sha
+        import json as jmod
+        body = jmod.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(api_url, data=body, method='PUT',
+              headers={'Authorization':f'token {token}','User-Agent':'ManaFood','Content-Type':'application/json'})
+        resp = urllib.request.urlopen(req, timeout=15)
+        if resp.status in (200,201):
+            return {"ok":True,"url":f"https://biomarinha00.github.io/manafood/"}
+        else:
+            return {"ok":False,"erro":f"GitHub retornou status {resp.status}"}
     except Exception as e:
         return {"ok":False,"erro":str(e)}
 

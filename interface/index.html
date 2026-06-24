@@ -1758,6 +1758,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
             <div class="form-group"><label>Pedido mínimo R$</label><input id="card-pedido-min" type="number" step="0.01" min="0" placeholder="0"></div>
             <div style="border-top:1px solid var(--border);margin:12px 0 8px;padding-top:10px;font-size:12px;font-weight:700;color:var(--text2)">🔗 Link público (QR Code)</div>
             <div class="form-group full"><label>URL do cardápio (deixe vazio pra usar IP local)</label><input id="card-url-publica" placeholder="Ex: https://seu-link.trycloudflare.com/cardapio"></div>
+            <div style="border-top:1px solid var(--border);margin:12px 0 8px;padding-top:10px;font-size:12px;font-weight:700;color:var(--text2)">🌐 Publicar cardápio online (GitHub Pages)</div>
+            <div class="form-group full"><label>Token GitHub</label><input id="card-github-token" type="password" placeholder="ghp_..."></div>
+            <button onclick="publicarCardapio()" style="padding:10px 20px;border-radius:8px;border:none;background:#2563eb;color:#fff;font-size:13px;font-weight:700;cursor:pointer">🚀 Publicar cardápio online</button>
+            <div id="card-pub-status" style="font-size:12px;margin-top:6px;color:var(--text2)"></div>
             <button onclick="salvarCardapioConfig()" class="confirm-btn" style="margin-top:4px">💾 Salvar configurações</button>
           </div>
         </div>
@@ -5740,6 +5744,23 @@ async function aplicarUpdate(){
   }
 }
 
+async function publicarCardapio(){
+  var token=document.getElementById('card-github-token').value.trim();
+  var status=document.getElementById('card-pub-status');
+  if(!token){toast('Preencha o token do GitHub','warn');return}
+  // Salva token no servidor
+  await api('/config','POST',{chave:'github_token',valor:token});
+  status.innerHTML='<span style="color:#2563eb">⏳ Publicando...</span>';
+  var res=await api('/cardapio/publicar','POST',{});
+  if(res&&res.ok){
+    status.innerHTML='<span style="color:#16a34a">✅ Publicado! <a href="'+res.url+'" target="_blank" style="color:#2563eb;font-weight:700">'+res.url+'</a></span>';
+    toast('Cardápio publicado online!');
+  }else{
+    status.innerHTML='<span style="color:#dc2626">❌ '+(res&&res.erro||'Erro')+'</span>';
+    toast((res&&res.erro)||'Erro ao publicar','err');
+  }
+}
+
 function onLogoSelect(e){
   var file=e.target.files[0];if(!file)return;
   if(file.size>512*1024){toast('Logo muito grande! Máx 500KB','err');return}
@@ -7351,6 +7372,7 @@ async function loadCardapioConfig(){
   _el=document.getElementById('card-instagram');if(_el)_el.value=cfg.instagram||'';
   _el=document.getElementById('card-pedido-min');if(_el)_el.value=cfg.pedido_minimo||'';
   _el=document.getElementById('card-url-publica');if(_el)_el.value=localStorage.getItem('card_url_publica')||'';
+  var _cfgAll=await api('/config');if(_cfgAll){var _gt=_cfgAll.github_token||'';var _gtEl=document.getElementById('card-github-token');if(_gtEl&&_gt)_gtEl.value=_gt;}
   var _lp=document.getElementById('card-logo-preview'),_lph=document.getElementById('card-logo-placeholder');
   if(cfg.logo&&cfg.logo.startsWith('data:')){window._cardLogo=cfg.logo;if(_lp){_lp.src=cfg.logo;_lp.style.display='block';}if(_lph)_lph.style.display='none';}
   else{window._cardLogo='';if(_lp)_lp.style.display='none';if(_lph)_lph.style.display='flex';}
