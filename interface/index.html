@@ -2735,6 +2735,9 @@ function fmtData(s){return s?(s.slice(0,10).split('-').reverse().join('/')):'-'}
 
 // ── MODO OFFLINE ──────────────────────────────────────────────────────────────
 let _offlineDB=null, _isOnline=true, _pendingSyncCount=0, _syncInProgress=false, _offlineFails=0;
+var _apiMemCache={};
+function _apiCacheKey(p,m){return m+':'+p}
+function _apiFromCache(path){var k=_apiCacheKey(path,'GET'),c=_apiMemCache[k];if(c&&Date.now()-c.t<30000)return c.d;return null}
 const _CACHEABLE_PATHS=['/produtos','/clientes','/categorias','/config'];
 
 function _genUUID(){
@@ -2913,12 +2916,16 @@ function updateSyncBadge(){
 
 async function api(path,method='GET',body=null){
   try{
+    // Cache rápido em memória (30s) pra GETs — evita requests repetidos ao trocar de aba
+    if(method==='GET'){var _mc=_apiFromCache(path);if(_mc)return _mc}
     const opts={method,headers:{'Content-Type':'application/json'},cache:'no-store'};
     if(body) opts.body=JSON.stringify(body);
     const res=await fetch(API+path,opts);
     const data=await res.json();
     _offlineFails=0;
     if(!_isOnline) _setOnline(true);
+    if(method==='GET') _apiMemCache[_apiCacheKey(path,'GET')]={d:data,t:Date.now()};
+    if(method==='POST') _apiMemCache={};
     const basePath=path.split('?')[0];
     if(method==='GET'&&_CACHEABLE_PATHS.includes(basePath)) cacheSet(basePath,data);
     return data;
