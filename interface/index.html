@@ -5749,7 +5749,7 @@ async function publicarCardapio(){
   var status=document.getElementById('card-pub-status');
   if(!token){toast('Preencha o token do GitHub','warn');return}
   // Salva token no servidor
-  await api('/config','POST',{chave:'github_token',valor:token});
+  await api('/config','POST',{github_token:token});
   status.innerHTML='<span style="color:#2563eb">⏳ Publicando...</span>';
   var res=await api('/cardapio/publicar','POST',{});
   if(res&&res.ok){
