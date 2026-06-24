@@ -3499,6 +3499,42 @@ async function loadEstoque(){
 }
 
 function renderTabelaEstoque(data){
+  const isMob=window.innerWidth<=700;
+  if(isMob){
+    // Mobile: cards
+    const container=document.getElementById('estoque-body').parentElement.parentElement;
+    const oldTable=container.querySelector('table');
+    if(oldTable) oldTable.style.display='none';
+    let cardsEl=container.querySelector('.mob-cards');
+    if(!cardsEl){cardsEl=document.createElement('div');cardsEl.className='mob-cards';container.appendChild(cardsEl)}
+    cardsEl.innerHTML=data.map(p=>{
+      const cor=p.quantidade<=0?'#dc2626':p.quantidade<=5?'#f59e0b':'#16a34a';
+      const badge=p.quantidade===0?'Zerado':p.quantidade<=5?'Baixo':'OK';
+      return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;display:flex;gap:10px;align-items:center">
+        <div style="flex-shrink:0">${imgTag(p,44)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:14px">${p.nome}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">${p.categoria} · ${p.codigo||'—'}</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+            <span style="font-weight:700;color:var(--accent)">${fmt(p.preco)}</span>
+            <span style="font-size:12px;color:${cor};font-weight:700;background:${cor}15;padding:2px 8px;border-radius:6px">${p.quantidade} ${p.unidades} · ${badge}</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px;align-items:center">
+            <input class="qty-input" id="qty-${p.id}" type="number" value="${p.quantidade}" min="0" style="width:60px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:13px;text-align:center">
+            <button class="btn-save-qty perm-gerente" data-sid="${p.id}" style="padding:4px 10px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:11px;font-weight:700;cursor:pointer">Salvar</button>
+            <button class="btn-sm btn-edit perm-gerente" data-eid="${p.id}" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:#fff;font-size:11px;cursor:pointer">✏️ Editar</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    _initEstoqueEvents();
+    return;
+  }
+  // Desktop: tabela normal
+  const container2=document.getElementById('estoque-body').parentElement.parentElement;
+  const oldCards=container2.querySelector('.mob-cards');
+  if(oldCards) oldCards.remove();
+  const tbl=container2.querySelector('table');if(tbl) tbl.style.display='';
   document.getElementById('estoque-body').innerHTML=data.map(p=>{
     const b=p.quantidade===0?'<span class="badge badge-zero">Zerado</span>'
            :p.quantidade<=5?'<span class="badge badge-low">Baixo</span>'
@@ -3522,7 +3558,7 @@ function renderTabelaEstoque(data){
       </td>
     </tr>`;
   }).join('');
-  _initEstoqueEvents(); // delegation para salvar/editar
+  _initEstoqueEvents();
 }
 
 function renderTabelaMarkup(data){
@@ -7755,6 +7791,42 @@ async function loadUsuarios(){
   if(!data.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty">Nenhum usuário cadastrado</div></td></tr>'; return; }
   window._usuariosCache = data;
   _initUsuariosTableEvents();
+  const isMob=window.innerWidth<=700;
+  if(isMob){
+    const container=tbody.parentElement.parentElement;
+    const oldTable=container.querySelector('table');
+    if(oldTable) oldTable.style.display='none';
+    let cardsEl=container.querySelector('.mob-cards-usr');
+    if(!cardsEl){cardsEl=document.createElement('div');cardsEl.className='mob-cards-usr';container.appendChild(cardsEl)}
+    cardsEl.innerHTML=data.map(u=>{
+      const isSelf=usuarioLogado&&u.id===usuarioLogado.id;
+      const perfilBadge=PERFIL_BADGE[u.perfil]||u.perfil;
+      const ativoCor=u.ativo?'#16a34a':'#dc2626';
+      const ativoTxt=u.ativo?'Ativo':'Inativo';
+      return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-weight:700;font-size:14px">${u.nome}${isSelf?' <span style="font-size:10px;color:var(--text2)">(você)</span>':''}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;font-family:monospace">@${u.usuario}</div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${ativoCor};background:${ativoCor}15;padding:3px 10px;border-radius:8px">${ativoTxt}</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;justify-content:space-between">
+          <div>${perfilBadge}</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn-sm btn-edit" data-editar-usr="${u.id}" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:#fff;font-size:12px;cursor:pointer">✏️ Editar</button>
+            ${!isSelf?'<button class="btn-sm btn-del" data-excluir="'+u.id+'" data-nome="'+u.nome.replace(/"/g,'&quot;')+'" style="padding:5px 12px;border-radius:6px;border:1px solid #fca5a5;background:#fef2f2;font-size:12px;cursor:pointer;color:#dc2626">🗑️</button>':''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    return;
+  }
+  // Desktop: tabela
+  const container2=tbody.parentElement.parentElement;
+  const oldCards=container2.querySelector('.mob-cards-usr');
+  if(oldCards) oldCards.remove();
+  const tbl=container2.querySelector('table');if(tbl) tbl.style.display='';
   tbody.innerHTML = data.map(u=>{
     const ativoBadge = u.ativo
       ? '<span class="badge badge-status-ativo">✅ Ativo</span>'
