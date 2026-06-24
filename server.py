@@ -2610,15 +2610,29 @@ def api_check_update():
         return {"ok":True,"versao_local":LOCAL_VERSION,"versao_remota":"","tem_update":False}
 
 def api_aplicar_update():
-    import subprocess
+    import urllib.request
+    base_url = 'https://raw.githubusercontent.com/Biomarinha00/manafood/main/'
+    base_dir = Path(__file__).parent
+    arquivos = [
+        ('server.py', base_dir / 'server.py'),
+        ('interface/index.html', base_dir / 'interface' / 'index.html'),
+        ('version.txt', base_dir / 'version.txt'),
+        ('mana.py', base_dir / 'mana.py'),
+        ('manifest.json', base_dir / 'manifest.json'),
+        ('INICIAR.bat', base_dir / 'INICIAR.bat'),
+    ]
     try:
-        result = subprocess.run(['git','pull'], cwd=str(Path(__file__).parent),
-                                capture_output=True, text=True, timeout=30)
-        if result.returncode == 0:
-            new_ver = (Path(__file__).parent / 'version.txt').read_text(encoding='utf-8').strip() if (Path(__file__).parent / 'version.txt').exists() else LOCAL_VERSION
-            return {"ok":True,"msg":"Atualizado! Reinicie o servidor.","versao":new_ver,"output":result.stdout}
-        else:
-            return {"ok":False,"erro":result.stderr or "Erro no git pull"}
+        atualizado = 0
+        for remote_path, local_path in arquivos:
+            try:
+                req = urllib.request.urlopen(base_url + remote_path, timeout=15)
+                conteudo = req.read()
+                local_path.parent.mkdir(parents=True, exist_ok=True)
+                local_path.write_bytes(conteudo)
+                atualizado += 1
+            except: pass
+        new_ver = (base_dir / 'version.txt').read_text(encoding='utf-8').strip() if (base_dir / 'version.txt').exists() else LOCAL_VERSION
+        return {"ok":True,"msg":f"Atualizado! {atualizado} arquivos baixados. Reinicie o servidor.","versao":new_ver}
     except Exception as e:
         return {"ok":False,"erro":str(e)}
 
