@@ -74,7 +74,7 @@ def init_database():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tipo TEXT NOT NULL, descricao TEXT NOT NULL,
         valor REAL NOT NULL,
-        data_movimentacao DATE DEFAULT (date('now')),
+        data_movimentacao DATE DEFAULT (date('now','localtime')),
         categoria TEXT, pagamento TEXT DEFAULT '-',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
 
@@ -1172,7 +1172,7 @@ def api_reposicao(params=None):
         LEFT JOIN itens_venda iv ON iv.produto_id = p.id
             AND iv.venda_id IN (
                 SELECT v.id FROM vendas v
-                WHERE date(v.data_venda) >= date('now', ? || ' days')
+                WHERE date(v.data_venda) >= date('now','localtime', ? || ' days')
                   AND v.cancelada = 0 AND v.descartada = 0
             )
         WHERE p.ativo = 1
@@ -1201,7 +1201,7 @@ def api_reposicao(params=None):
         LEFT JOIN (
             SELECT iv.produto_id, SUM(iv.quantidade) AS total_vendido
             FROM itens_venda iv JOIN vendas v ON v.id=iv.venda_id
-            WHERE date(v.data_venda)>=date('now',? || ' days') AND v.cancelada=0 AND v.descartada=0
+            WHERE date(v.data_venda)>=date('now','localtime',? || ' days') AND v.cancelada=0 AND v.descartada=0
             GROUP BY iv.produto_id
         ) iv_total ON iv_total.produto_id=pi.produto_id
         WHERE i.ativo=1 GROUP BY i.id ORDER BY i.quantidade ASC
