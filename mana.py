@@ -155,6 +155,13 @@ def iniciar_sistema():
                 r.destroy()
             threading.Thread(target=_copy, daemon=True).start()
 
+        def reiniciar(icon, item):
+            icon.stop()
+            python = sys.executable
+            script = os.path.join(BASE, "mana.py")
+            subprocess.Popen([python, script], cwd=BASE)
+            os._exit(0)
+
         def encerrar(icon, item):
             icon.stop()
             os._exit(0)
@@ -165,6 +172,7 @@ def iniciar_sistema():
             pystray.MenuItem("Ver enderecos",      ver_info),
             pystray.MenuItem("Copiar link Wi-Fi",  copiar_link),
             pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Reiniciar servidor",  reiniciar),
             pystray.MenuItem("Encerrar",           encerrar),
         )
 
