@@ -3499,7 +3499,7 @@ async function loadEstoque(){
 }
 
 function renderTabelaEstoque(data){
-  const isMob=window.innerWidth<=700;
+  const isMob=window.innerWidth<=1024;
   if(isMob){
     // Mobile: cards
     const container=document.getElementById('estoque-body').parentElement.parentElement;
@@ -7791,7 +7791,7 @@ async function loadUsuarios(){
   if(!data.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty">Nenhum usuário cadastrado</div></td></tr>'; return; }
   window._usuariosCache = data;
   _initUsuariosTableEvents();
-  const isMob=window.innerWidth<=700;
+  const isMob=window.innerWidth<=1024;
   if(isMob){
     const container=tbody.parentElement.parentElement;
     const oldTable=container.querySelector('table');
