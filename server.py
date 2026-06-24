@@ -1565,6 +1565,8 @@ def api_importar_xml(data):
         if emit is not None:
             xNome = emit.find('nfe:xNome', ns) or emit.find('{http://www.portalfiscal.inf.br/nfe}xNome')
             cnpjEl = emit.find('nfe:CNPJ', ns) or emit.find('{http://www.portalfiscal.inf.br/nfe}CNPJ')
+            if cnpjEl is None:
+                cnpjEl = emit.find('nfe:CPF', ns) or emit.find('{http://www.portalfiscal.inf.br/nfe}CPF')
             fornecedor = xNome.text if xNome is not None else ''
             cnpj_forn = cnpjEl.text if cnpjEl is not None else ''
 
