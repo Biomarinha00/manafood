@@ -3888,18 +3888,13 @@ function renderClientesTabela(data){
 
 function _initClientesEvents(){
   const el = document.getElementById('clientes-tbody');
-  if(!el) return;
-  // onclick substitui o handler anterior em vez de acumular (ver explicação
-  // detalhada em _initHistoricoEvents). Aqui era ainda mais crítico: esta
-  // função é re-chamada a cada tecla digitada na busca de clientes.
-  el.onclick = function(e){
-    // Editar
+  const cliContainer = el ? el.parentElement.parentElement : null;
+  if(!cliContainer) return;
+  cliContainer.onclick = function(e){
     const btnE = e.target.closest('[data-editar-cli]');
     if(btnE){ e.stopPropagation(); editarCliente(parseInt(btnE.dataset.editarCli)); return; }
-    // Excluir
     const btnX = e.target.closest('[data-excluir-cli]');
     if(btnX){ e.stopPropagation(); confirmarExcluirCliente(parseInt(btnX.dataset.excluirCli), btnX.dataset.nomeCli); return; }
-    // Clique na linha — abre detalhe
     const tr = e.target.closest('[data-cli]');
     if(tr) abrirDetalheCliente(parseInt(tr.dataset.cli));
   };
@@ -4535,10 +4530,11 @@ function _initEstoqueEvents(){
       if(btnAdd){ addCart(parseInt(btnAdd.dataset.pid)); return; }
     };
   }
-  // Delegation no estoque (salvar qty e editar produto)
+  // Delegation no estoque (salvar qty e editar produto) — container cobre tabela E cards mobile
   const tb = document.getElementById('estoque-body');
-  if(tb){
-    tb.onclick = function(e){
+  const estContainer = tb ? tb.parentElement.parentElement : null;
+  if(estContainer){
+    estContainer.onclick = function(e){
       const btnS = e.target.closest('[data-sid]');
       if(btnS){ salvarEstoque(parseInt(btnS.dataset.sid)); return; }
       const btnE = e.target.closest('[data-eid]');
@@ -7971,10 +7967,9 @@ const PERFIL_BADGE = {
 
 function _initUsuariosTableEvents(){
   const el = document.getElementById('usuarios-tbody');
-  if(!el) return;
-  // onclick substitui o handler anterior em vez de acumular (mesmo padrão
-  // corrigido em _initHistoricoEvents e _initClientesEvents).
-  el.onclick = function(e){
+  const usrContainer = el ? el.parentElement.parentElement : null;
+  if(!usrContainer) return;
+  usrContainer.onclick = function(e){
     const btnE = e.target.closest('[data-editar-usr]');
     if(btnE){
       const u = (window._usuariosCache||[]).find(x=>String(x.id)===String(btnE.dataset.editarUsr));
