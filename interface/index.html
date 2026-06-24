@@ -5287,7 +5287,36 @@ async function loadReposicao(){
 }
 function _renderRepo(lista){
   const tb=document.getElementById('repo-body');
+  const isMob=window.innerWidth<=1024;
   if(!lista.length){tb.innerHTML='<tr><td colspan="6"><div class="empty">Nenhum produto encontrado</div></td></tr>';return}
+  if(isMob){
+    const container=tb.parentElement.parentElement;
+    const oldTable=container.querySelector('table');
+    if(oldTable) oldTable.style.display='none';
+    let cardsEl=container.querySelector('.mob-cards-repo');
+    if(!cardsEl){cardsEl=document.createElement('div');cardsEl.className='mob-cards-repo';container.appendChild(cardsEl)}
+    cardsEl.innerHTML=lista.map(p=>{
+      const cor=p.quantidade<=0?'#dc2626':p.quantidade<=5?'#f59e0b':'#16a34a';
+      const diasR=p.dias_restantes>=999?'—':p.dias_restantes<=0?'ZERADO':p.dias_restantes+'d';
+      const sug=p.sugestao>0?p.sugestao+' '+p.unidades:'—';
+      return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div style="font-weight:700;font-size:14px">'+p.nome+'</div>'+
+        '<span style="font-size:12px;font-weight:700;color:'+cor+';background:'+cor+'15;padding:2px 10px;border-radius:6px">'+p.quantidade+' '+p.unidades+'</span>'+
+        '</div>'+
+        '<div style="font-size:11px;color:var(--text2);margin-top:3px">'+p.categoria+'</div>'+
+        '<div style="display:flex;gap:12px;margin-top:8px;font-size:12px">'+
+        '<span>📊 Média: <strong>'+(p.media_diaria||0)+'/dia</strong></span>'+
+        '<span>⏳ Acaba: <strong style="color:'+cor+'">'+diasR+'</strong></span>'+
+        '<span>🛒 Comprar: <strong>'+sug+'</strong></span>'+
+        '</div></div>';
+    }).join('');
+    return;
+  }
+  const container2=tb.parentElement.parentElement;
+  const oldCards=container2.querySelector('.mob-cards-repo');
+  if(oldCards) oldCards.remove();
+  const tbl=container2.querySelector('table');if(tbl) tbl.style.display='';
   tb.innerHTML=lista.map(p=>{
     const diasR=p.dias_restantes>=999?'—':p.dias_restantes<=0?'<span style="color:#dc2626;font-weight:800">ZERADO</span>':p.dias_restantes+'d';
     const cor=p.quantidade<=0?'#dc2626':p.quantidade<=5?'#f59e0b':'#16a34a';
@@ -7923,9 +7952,23 @@ async function loadLog(){
     el.innerHTML='<div class="empty" style="padding:24px">Nenhum registro encontrado</div>';
     return;
   }
+  const isMobLog=window.innerWidth<=1024;
   el.innerHTML = data.map(r=>{
     const dt = r.created_at ? r.created_at.replace('T',' ').substring(0,16) : '—';
     const acao_cls = 'log-'+(r.acao||'').replace(/[^A-Z_]/g,'');
+    if(isMobLog){
+      return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="log-acao ${acao_cls}">${r.acao}</span>
+          <span style="font-size:10px;color:var(--text3)">${dt}</span>
+        </div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-top:4px;line-height:1.4">${r.descricao}</div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px">
+          <span style="color:var(--text2)">${r.modulo}</span>
+          <span style="font-weight:700;color:var(--accent)">${r.usuario_nome||'Sistema'}</span>
+        </div>
+      </div>`;
+    }
     return `<div class="log-row">
       <span class="log-acao ${acao_cls}">${r.acao}</span>
       <span style="width:80px;font-size:11px;color:var(--text2);flex-shrink:0">${r.modulo}</span>
