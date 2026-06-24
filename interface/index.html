@@ -3774,8 +3774,46 @@ function renderClientesTabela(data){
     tbody.innerHTML='<tr><td colspan="8"><div class="empty">Nenhum cliente encontrado</div></td></tr>';
     return;
   }
-  const _tb = document.getElementById('clientes-tbody');
   _initClientesEvents();
+  const isMob=window.innerWidth<=1024;
+  if(isMob){
+    const container=tbody.parentElement.parentElement;
+    const oldTable=container.querySelector('table');
+    if(oldTable) oldTable.style.display='none';
+    let cardsEl=container.querySelector('.mob-cards-cli');
+    if(!cardsEl){cardsEl=document.createElement('div');cardsEl.className='mob-cards-cli';container.appendChild(cardsEl)}
+    cardsEl.innerHTML=data.map(c=>{
+      const saldo=parseFloat(c.saldo_devedor||0);
+      const tags=marcadorTags(c.marcadores||'');
+      const st=c.status_cliente||'ativo';
+      const stCor=st==='bloqueado'?'#dc2626':st==='inativo'?'#94a3b8':'#16a34a';
+      const stTxt=st==='bloqueado'?'🚫 Bloqueado':st==='inativo'?'⏸ Inativo':'✅ Ativo';
+      const borderCor=st==='bloqueado'?'#fca5a5':st==='inativo'?'#e2e8f0':'var(--border)';
+      return `<div style="background:var(--bg2);border:1px solid ${borderCor};border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer" data-cli="${c.id}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700;font-size:14px;color:${st==='bloqueado'?'#dc2626':'var(--text)'}">${c.nome}</div>
+          <span style="font-size:11px;font-weight:700;color:${stCor};background:${stCor}15;padding:2px 8px;border-radius:6px">${stTxt}</span>
+        </div>
+        ${tags?'<div style="margin-top:4px">'+tags+'</div>':''}
+        <div style="display:flex;gap:10px;margin-top:6px;font-size:12px;color:var(--text2);flex-wrap:wrap">
+          ${c.telefone?'<span>📞 '+c.telefone+'</span>':''}
+          ${c.cpf?'<span>🪪 '+c.cpf+'</span>':''}
+          <span>🛒 ${c.total_compras||0} compras</span>
+        </div>
+        ${saldo>0?'<div style="font-size:12px;color:#dc2626;font-weight:700;margin-top:4px">💰 Devedor: '+fmt(saldo)+'</div>':''}
+        <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end">
+          <button class="btn-sm btn-edit" data-editar-cli="${c.id}" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:#fff;font-size:12px;cursor:pointer">✏️ Editar</button>
+          <button class="btn-sm btn-del" data-excluir-cli="${c.id}" data-nome-cli="${c.nome.replace(/"/g,'&quot;')}" style="padding:5px 12px;border-radius:6px;border:1px solid #fca5a5;background:#fef2f2;font-size:12px;cursor:pointer;color:#dc2626">🗑️</button>
+        </div>
+      </div>`;
+    }).join('');
+    return;
+  }
+  // Desktop: tabela
+  const container2=tbody.parentElement.parentElement;
+  const oldCards=container2.querySelector('.mob-cards-cli');
+  if(oldCards) oldCards.remove();
+  const tbl=container2.querySelector('table');if(tbl) tbl.style.display='';
   tbody.innerHTML=data.map(c=>{
     const saldo=parseFloat(c.saldo_devedor||0);
     const corSaldo=saldo>0?'color:#e05c5c;font-weight:700':'color:var(--text2)';
@@ -3788,8 +3826,7 @@ function renderClientesTabela(data){
     }[st]||'<span class="badge badge-status-ativo">✅ Ativo</span>';
     const rowStyle=st==='bloqueado'?';background:#1a0000':st==='inativo'?';background:#0d0d0d':'';
     const nomeColor=st==='inativo'?'#94a3b8':st==='bloqueado'?'#dc2626':'var(--text)';
-    const trId = 'cli-row-'+c.id;
-    return `<tr id="${trId}" style="cursor:pointer${rowStyle}" data-cli="${c.id}">
+    return `<tr style="cursor:pointer${rowStyle}" data-cli="${c.id}">
       <td>
         <div style="font-weight:700;color:${nomeColor}">${c.nome}</div>
         ${tags?'<div class="marcadores-lista" style="margin-top:4px">'+tags+'</div>':''}
