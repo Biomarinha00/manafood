@@ -75,6 +75,30 @@ def iniciar_sistema():
     httpd = srv.HTTPServer(("0.0.0.0", PORT), srv.ManaFoodHandler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
 
+    # Inicia Cloudflare Tunnel automaticamente (se cloudflared existir)
+    tunnel_exe = os.path.join(BASE, "cloudflared-windows-amd64.exe")
+    if os.path.exists(tunnel_exe):
+        def _run_tunnel():
+            try:
+                proc = subprocess.Popen(
+                    [tunnel_exe, "tunnel", "--url", "http://localhost:" + str(PORT)],
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    cwd=BASE, creationflags=0x08000000
+                )
+                for line in iter(proc.stdout.readline, b''):
+                    txt = line.decode('utf-8', errors='ignore').strip()
+                    if 'trycloudflare.com' in txt and 'https://' in txt:
+                        # Extrai o link do tunnel
+                        import re
+                        m = re.search(r'(https://[a-z0-9-]+\.trycloudflare\.com)', txt)
+                        if m:
+                            global tunnel_url
+                            tunnel_url = m.group(1)
+                            print("Tunnel  : " + tunnel_url)
+                            print("Cardapio: " + tunnel_url + "/cardapio")
+            except: pass
+        threading.Thread(target=_run_tunnel, daemon=True).start()
+
     time.sleep(1.5)
     webbrowser.open(url)
 
@@ -106,13 +130,14 @@ def iniciar_sistema():
                 r = tk.Tk()
                 r.withdraw()
                 r.attributes('-topmost', True)
+                turl = globals().get('tunnel_url','(iniciando...)')
                 messagebox.showinfo(
-                    "Mana Hamburgueria — Endereços",
+                    "Mana Food — Endereços",
                     "✅ Sistema rodando!\n\n"
-                    "💻 Este PC (localhost):\n" + url + "\n\n"
-                    "📱 Celular/Tablet (Wi-Fi):\n" + urlr + "\n\n"
-                    "🌐 Link externo (DDNS):\n"
-                    "(configure seu DDNS apontando para " + ip + ")"
+                    "💻 Este PC:\n" + url + "\n\n"
+                    "📱 Celular (Wi-Fi):\n" + urlr + "\n\n"
+                    "🌐 Link externo:\n" + turl + "\n\n"
+                    "🍔 Cardápio:\n" + turl + "/cardapio"
                 )
                 r.destroy()
             threading.Thread(target=_show, daemon=True).start()
